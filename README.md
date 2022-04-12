@@ -30,3 +30,7 @@ tensorflowjs_converter --input_format=tf_saved_model --output_format=tfjs_graph_
 ```
 4. Move generated `tfjs_model` to `web/model` directory.
 5. Start a HTTP server in `web/` directory.
+
+# Performance
+I tested with Chrome browser on my Windows 11 workstation with Core i9 9900 / RTX 2080.
+The first prediction, it takes about 3.5 sec. However, the second prediction and followings take 0.1 sec.
