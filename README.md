@@ -3,6 +3,8 @@ Synthetic datageneration for machine learning models with Suzanne / monkey.
 Model training is done based on the procedure of [this article](https://blog.tensorflow.org/2021/01/custom-object-detection-in-browser.html).
 
 
+I used 5000 as the steps of training.
+
 Input image is like this. The dataset has variety of monkey images with different position, rotation and color.
 ![dataset](./readme_assets/plain_dataset.png)
 
@@ -34,3 +36,16 @@ tensorflowjs_converter --input_format=tf_saved_model --output_format=tfjs_graph_
 # Performance
 I tested with Chrome browser on my Windows 11 workstation with Core i9 9900 / RTX 2080.
 The first prediction, it takes about 3.5 sec. However, the second prediction and followings take 0.1 sec.
+
+This model does not recognize the monkey in photos taken by webcam just work with test dataset.
+
+# Appendix: Config chage
+This is just a quick note. I changed the following config parameters. It seemed that with 1000 steps, I got a good model according to TensorBoard. However, the model did not work well.
+
+- max_detections_per_class: 10
+- max_total_detections: 10
+- max_number_of_boxes: 10
+
+![screenshot](./readme_assets/small_n_boxes.png)
+
+I think this necessarily means that the parameters are not good. I need more investigations.
