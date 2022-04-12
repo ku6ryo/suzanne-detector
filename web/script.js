@@ -1,37 +1,5 @@
-async function getUserMedia(width, height) {
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    return await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "environment",
-        width: {
-          ideal: width,
-        },
-        height: {
-          ideal: height,
-        }
-      },
-    })
-  } else {
-    alert("getUserMedia not supported on your browser!");
-  }
-}
-
 ;(async () => {
   const model = await tf.loadGraphModel("/model/model.json");
-  const width = 512
-  const height = 512
-  const stream = await getUserMedia(width, height)
-  if (!stream) {
-    throw new Error("media stream not available")
-  }
-  const cameraVideo = document.createElement("video");
-  cameraVideo.srcObject = stream;
-  cameraVideo.play();
-  await (new Promise((resolve, reject) => {
-    cameraVideo.addEventListener("playing", () => {
-      resolve(0)
-    })
-  }))
 
 //  const threshold = 0.75;
   const threshold = 0.5;
@@ -43,18 +11,34 @@ async function getUserMedia(width, height) {
   }
 
   const mainCanvas = document.createElement("canvas");
-  mainCanvas.width = cameraVideo.videoWidth;
-  mainCanvas.height = cameraVideo.videoHeight;
   const ctx = mainCanvas.getContext("2d");
-  document.body.appendChild(mainCanvas)
   const font = "16px sans-serif";
   ctx.font = font;
   ctx.textBaseline = "top";
 
-  const loop = async () => {
+  const inputElem = document.createElement("input")
+  inputElem.type = "file"
+  inputElem.accept = "image/*"
+  inputElem.addEventListener("change", (e) => {
+    const  files = e.target.files;
+    const reader = new FileReader();
+    reader.onload = (ee) => {
+      const img = new Image()
+      img.src = ee.target.result
+      img.onload = () => {
+        predict(img)
+      }
+    }
+    reader.readAsDataURL(files[0]);
+  })
+  document.body.appendChild(inputElem)
+  document.body.appendChild(mainCanvas)
+
+  async function predict(img) {
     tf.engine().startScope()
-    const cameraVideo = document.getElementById("img")
-    const tfImg = tf.browser.fromPixels(cameraVideo).toInt();
+    mainCanvas.width = img.width;
+    mainCanvas.height = img.height;
+    const tfImg = tf.browser.fromPixels(img).toInt();
     const expandedImg = tfImg.transpose([0, 1, 2]).expandDims();
     const predictions = await model.executeAsync(expandedImg);
     /*
@@ -68,15 +52,15 @@ async function getUserMedia(width, height) {
     const classes = predictions[1].dataSync(); // shape [1, 100]
     const detectionObjects = []
     ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-    ctx.drawImage(cameraVideo, 0, 0, mainCanvas.width, mainCanvas.height);
+    ctx.drawImage(img, 0, 0, mainCanvas.width, mainCanvas.height);
 
     scores[0].forEach((score, i) => {
       if (score > threshold) {
         const bbox = [];
-        const minY = boxes[0][i][0] * cameraVideo.height;
-        const minX = boxes[0][i][1] * cameraVideo.width;
-        const maxY = boxes[0][i][2] * cameraVideo.height;
-        const maxX = boxes[0][i][3] * cameraVideo.width;
+        const minY = boxes[0][i][0] * img.height;
+        const minX = boxes[0][i][1] * img.width;
+        const maxY = boxes[0][i][2] * img.height;
+        const maxX = boxes[0][i][3] * img.width;
         bbox[0] = minX;
         bbox[1] = minY;
         bbox[2] = maxX - minX;
@@ -103,21 +87,14 @@ async function getUserMedia(width, height) {
 
       // Draw the label background.
       ctx.fillStyle = "#00FFFF";
-      const textWidth = ctx.measureText(item["label"] + " " + (100 * item["score"]).toFixed(2) + "%").width;
-      const textHeight = parseInt(font, 10); // base 10
-      ctx.fillRect(x, y, textWidth + 4, textHeight + 4);
+      const scoreText = item["label"] + " " + (100*item["score"]).toFixed(2) + "%";
+      const textWidth = ctx.measureText(scoreText).width;
+      const textHeight = 16
+      ctx.fillRect(x, y, textWidth, textHeight);
+      ctx.fillStyle = "#000000";
+      ctx.fillText(scoreText, x, y);
     });
     console.log(detectionObjects)
-    detectionObjects.forEach(item => {
-      const x = item['bbox'][0];
-      const y = item['bbox'][1];
-
-      // Draw the text last to ensure it's on top.
-      ctx.fillStyle = "#000000";
-      ctx.fillText(item["label"] + " " + (100*item["score"]).toFixed(2) + "%", x, y);
-    });
     tf.engine().endScope()
-    requestAnimationFrame(loop)
   }
-  requestAnimationFrame(loop)
-})()
+})();
