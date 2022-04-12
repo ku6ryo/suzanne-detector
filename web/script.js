@@ -31,13 +31,19 @@
     }
     reader.readAsDataURL(files[0]);
   })
+  const measurementElem = document.createElement("div")
+
   document.body.appendChild(inputElem)
   document.body.appendChild(mainCanvas)
+  document.body.appendChild(measurementElem)
 
   async function predict(img) {
-    tf.engine().startScope()
     mainCanvas.width = img.width;
     mainCanvas.height = img.height;
+    const startTime = performance.now()
+    ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+    ctx.drawImage(img, 0, 0, mainCanvas.width, mainCanvas.height);
+    tf.engine().startScope()
     const tfImg = tf.browser.fromPixels(img).toInt();
     const expandedImg = tfImg.transpose([0, 1, 2]).expandDims();
     const predictions = await model.executeAsync(expandedImg);
@@ -51,8 +57,6 @@
     const scores = predictions[5].arraySync(); // shape [1, 100]
     const classes = predictions[1].dataSync(); // shape [1, 100]
     const detectionObjects = []
-    ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-    ctx.drawImage(img, 0, 0, mainCanvas.width, mainCanvas.height);
 
     scores[0].forEach((score, i) => {
       if (score > threshold) {
@@ -96,5 +100,6 @@
     });
     console.log(detectionObjects)
     tf.engine().endScope()
+    measurementElem.innerText = `${(performance.now() - startTime).toFixed(2)} ms`
   }
 })();
